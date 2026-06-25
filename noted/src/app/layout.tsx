@@ -16,6 +16,13 @@ export const metadata: Metadata = {
   title: "Noted — Study once. Post everywhere.",
   description:
     "Noted turns a student creator's study notes into a ready-to-post content pack: carousel, reel script, caption and hashtags — in their own voice.",
+  keywords: ["studygram", "student creator", "content generator", "AI SaaS", "exam prep"],
+  openGraph: {
+    title: "Noted — Study once. Post everywhere.",
+    description:
+      "Turn your study notes into a ready-to-post carousel, reel script, caption and hashtags in seconds.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -28,7 +35,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-zinc-900">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#fafafa] text-zinc-900">{children}</body>
     </html>
   );
 }
