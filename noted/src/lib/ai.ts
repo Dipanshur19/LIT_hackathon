@@ -30,9 +30,21 @@ function buildPrompt(input: GenerateInput): string {
     .join("\n");
 }
 
+// Surfaces the real reason the AI path failed (visible in the dev terminal).
+function warn(reason: string) {
+  console.warn(`[Noted] OpenAI not used → falling back to smart engine. Reason: ${reason}`);
+}
+
 async function generateWithOpenAI(input: GenerateInput): Promise<ContentPack | null> {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) return null;
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key) {
+    warn("OPENAI_API_KEY is not set (check noted/.env.local and restart the dev server).");
+    return null;
+  }
+  if (!key.startsWith("sk-")) {
+    warn(`Key does not look like an OpenAI key (should start with "sk-", got "${key.slice(0, 4)}…").`);
+    return null;
+  }
 
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   try {
@@ -53,13 +65,23 @@ async function generateWithOpenAI(input: GenerateInput): Promise<ContentPack | n
       }),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      warn(`OpenAI API returned ${res.status} ${res.statusText}. ${body.slice(0, 180)}`);
+      return null;
+    }
     const data = await res.json();
     const raw = data?.choices?.[0]?.message?.content;
-    if (!raw) return null;
+    if (!raw) {
+      warn("OpenAI response had no content.");
+      return null;
+    }
 
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.carousel) || !Array.isArray(parsed.reelScript)) return null;
+    if (!Array.isArray(parsed.carousel) || !Array.isArray(parsed.reelScript)) {
+      warn("OpenAI returned JSON in an unexpected shape.");
+      return null;
+    }
 
     const hashtags: string[] = (parsed.hashtags ?? []).map((t: string) =>
       t.startsWith("#") ? t : `#${t}`,
@@ -75,7 +97,8 @@ async function generateWithOpenAI(input: GenerateInput): Promise<ContentPack | n
       hookScore: scoreHook(parsed.carousel?.[0]?.title ?? input.topic),
       source: "ai",
     };
-  } catch {
+  } catch (e) {
+    warn(`Network/parse error: ${e instanceof Error ? e.message : String(e)}`);
     return null;
   }
 }
